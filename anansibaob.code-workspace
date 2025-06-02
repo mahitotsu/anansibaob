@@ -1,0 +1,14 @@
+{
+    "folders": [
+        {
+            "path": "."
+        },
+        {
+            "path": "anansibaob-cdk"
+        },
+        {
+            "path": "anansibaob-lambda"
+        }
+    ]
+}
+

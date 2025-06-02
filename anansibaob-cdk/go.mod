@@ -1,4 +1,4 @@
-module anansibaob
+module mahitotsu.com/anansibaob-cdk
 
 go 1.23.0
 
@@ -12,6 +12,7 @@ require (
 
 require (
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
+	github.com/aws/aws-cdk-go/awscdklambdagoalpha/v2 v2.199.0-alpha.0
 	github.com/cdklabs/awscdk-asset-awscli-go/awscliv1/v2 v2.2.237 // indirect
 	github.com/cdklabs/awscdk-asset-node-proxy-agent-go/nodeproxyagentv6/v2 v2.1.0 // indirect
 	github.com/cdklabs/cloud-assembly-schema-go/awscdkcloudassemblyschema/v41 v41.2.0 // indirect
