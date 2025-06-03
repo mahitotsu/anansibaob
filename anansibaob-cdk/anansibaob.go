@@ -4,6 +4,8 @@ import (
 	"os"
 
 	"github.com/aws/aws-cdk-go/awscdk/v2"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsdsql"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslogs"
 	"github.com/aws/aws-cdk-go/awscdklambdagoalpha/v2"
@@ -13,6 +15,10 @@ import (
 
 func NewAnansibaobStack(scope constructs.Construct, id *string, props *awscdk.StackProps) awscdk.Stack {
 	stack := awscdk.NewStack(scope, id, props)
+
+	dsqlCluster := awsdsql.NewCfnCluster(stack, jsii.String("dsqlCluster"), &awsdsql.CfnClusterProps{
+		DeletionProtectionEnabled: false,
+	})
 
 	webapi := awscdklambdagoalpha.NewGoFunction(stack, jsii.String("webapi"), &awscdklambdagoalpha.GoFunctionProps{
 		Entry: jsii.String("../anansibaob-webapi"),
@@ -30,6 +36,12 @@ func NewAnansibaobStack(scope constructs.Construct, id *string, props *awscdk.St
 			Retention:     awslogs.RetentionDays_ONE_DAY,
 		}),
 	})
+	webapi.Role().GrantPrincipal().AddToPrincipalPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+		Effect:    awsiam.Effect_ALLOW,
+		Actions:   &[]*string{jsii.String("dsql:DbConnect"), jsii.String("dsql:DbConnectAdmin")},
+		Resources: &[]*string{dsqlCluster.AttrResourceArn()},
+	}))
+
 	weburi := webapi.AddFunctionUrl(&awslambda.FunctionUrlOptions{
 		InvokeMode: awslambda.InvokeMode_BUFFERED,
 		AuthType:   awslambda.FunctionUrlAuthType_NONE,
