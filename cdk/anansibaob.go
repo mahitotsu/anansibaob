@@ -21,7 +21,7 @@ func NewAnansibaobStack(scope constructs.Construct, id *string, props *awscdk.St
 	})
 
 	webapi := awscdklambdagoalpha.NewGoFunction(stack, jsii.String("webapi"), &awscdklambdagoalpha.GoFunctionProps{
-		Entry: jsii.String("../anansibaob-webapi"),
+		Entry: jsii.String("../cmd/lambda-webapi"),
 		Layers: &[]awslambda.ILayerVersion{
 			awslambda.LayerVersion_FromLayerVersionArn(
 				stack, jsii.String("WebAdapterLayer"),
