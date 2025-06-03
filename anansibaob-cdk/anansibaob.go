@@ -15,7 +15,16 @@ func NewAnansibaobStack(scope constructs.Construct, id *string, props *awscdk.St
 	stack := awscdk.NewStack(scope, id, props)
 
 	webapi := awscdklambdagoalpha.NewGoFunction(stack, jsii.String("webapi"), &awscdklambdagoalpha.GoFunctionProps{
-		Entry: jsii.String("../anansibaob-lambda/webapi"),
+		Entry: jsii.String("../anansibaob-webapi"),
+		Layers: &[]awslambda.ILayerVersion{
+			awslambda.LayerVersion_FromLayerVersionArn(
+				stack, jsii.String("WebAdapterLayer"),
+				jsii.Sprintf("arn:aws:lambda:%s:753240598075:layer:LambdaAdapterLayerX86:25", *stack.Region()),
+			),
+		},
+		Environment: &map[string]*string{
+			"PORT": jsii.String("8000"),
+		},
 		LogGroup: awslogs.NewLogGroup(stack, jsii.String("LogGroup"), &awslogs.LogGroupProps{
 			RemovalPolicy: awscdk.RemovalPolicy_DESTROY,
 			Retention:     awslogs.RetentionDays_ONE_DAY,

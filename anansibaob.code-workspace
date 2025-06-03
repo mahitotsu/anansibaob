@@ -7,7 +7,7 @@
             "path": "anansibaob-cdk"
         },
         {
-            "path": "anansibaob-lambda"
+            "path": "anansibaob-webapi"
         }
     ]
 }
