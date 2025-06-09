@@ -20,6 +20,22 @@ func NewAnansibaobStack(scope constructs.Construct, id *string, props *awscdk.St
 		DeletionProtectionEnabled: false,
 	})
 
+	dbMigrator := awscdklambdagoalpha.NewGoFunction(stack, jsii.String("dbMigrator"), &awscdklambdagoalpha.GoFunctionProps{
+		Entry: jsii.String("../cmd/dbmigrator-lambda"),
+		Environment: &map[string]*string{
+			"DB_CLUSTER_ENDPOINT": jsii.Sprintf("%s.dsql.%s.on.aws", *dsqlCluster.AttrIdentifier(), *stack.Region()),
+		},
+		LogGroup: awslogs.NewLogGroup(stack, jsii.String("DbMigratorLogGroup"), &awslogs.LogGroupProps{
+			RemovalPolicy: awscdk.RemovalPolicy_DESTROY,
+			Retention:     awslogs.RetentionDays_ONE_DAY,
+		}),
+	})
+	dbMigrator.Role().AddToPrincipalPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+		Effect:    awsiam.Effect_ALLOW,
+		Actions:   &[]*string{jsii.String("dsql:DbConnect"), jsii.String("dsql:DbConnectAdmin")},
+		Resources: &[]*string{dsqlCluster.AttrResourceArn()},
+	}))
+
 	webapi := awscdklambdagoalpha.NewGoFunction(stack, jsii.String("webapi"), &awscdklambdagoalpha.GoFunctionProps{
 		Entry: jsii.String("../cmd/webapi-gin"),
 		Layers: &[]awslambda.ILayerVersion{
@@ -31,12 +47,12 @@ func NewAnansibaobStack(scope constructs.Construct, id *string, props *awscdk.St
 		Environment: &map[string]*string{
 			"PORT": jsii.String("8000"),
 		},
-		LogGroup: awslogs.NewLogGroup(stack, jsii.String("LogGroup"), &awslogs.LogGroupProps{
+		LogGroup: awslogs.NewLogGroup(stack, jsii.String("WebapiLogGroup"), &awslogs.LogGroupProps{
 			RemovalPolicy: awscdk.RemovalPolicy_DESTROY,
 			Retention:     awslogs.RetentionDays_ONE_DAY,
 		}),
 	})
-	webapi.Role().GrantPrincipal().AddToPrincipalPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+	webapi.Role().AddToPrincipalPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
 		Effect:    awsiam.Effect_ALLOW,
 		Actions:   &[]*string{jsii.String("dsql:DbConnect"), jsii.String("dsql:DbConnectAdmin")},
 		Resources: &[]*string{dsqlCluster.AttrResourceArn()},
