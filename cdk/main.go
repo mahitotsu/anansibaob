@@ -19,6 +19,11 @@ func NewAnansibaobStack(scope constructs.Construct, id *string, props *awscdk.St
 	dsqlCluster := awsdsql.NewCfnCluster(stack, jsii.String("dsqlCluster"), &awsdsql.CfnClusterProps{
 		DeletionProtectionEnabled: false,
 	})
+	dsqlPolicyStatement := awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+		Effect:    awsiam.Effect_ALLOW,
+		Actions:   &[]*string{jsii.String("dsql:DbConnect"), jsii.String("dsql:DbConnectAdmin")},
+		Resources: &[]*string{dsqlCluster.AttrResourceArn()},
+	})
 
 	dbMigrator := awscdklambdagoalpha.NewGoFunction(stack, jsii.String("dbMigrator"), &awscdklambdagoalpha.GoFunctionProps{
 		Entry: jsii.String("../cmd/dbmigrator-lambda"),
@@ -30,11 +35,7 @@ func NewAnansibaobStack(scope constructs.Construct, id *string, props *awscdk.St
 			Retention:     awslogs.RetentionDays_ONE_DAY,
 		}),
 	})
-	dbMigrator.Role().AddToPrincipalPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-		Effect:    awsiam.Effect_ALLOW,
-		Actions:   &[]*string{jsii.String("dsql:DbConnect"), jsii.String("dsql:DbConnectAdmin")},
-		Resources: &[]*string{dsqlCluster.AttrResourceArn()},
-	}))
+	dbMigrator.Role().AddToPrincipalPolicy(dsqlPolicyStatement)
 
 	webapi := awscdklambdagoalpha.NewGoFunction(stack, jsii.String("webapi"), &awscdklambdagoalpha.GoFunctionProps{
 		Entry: jsii.String("../cmd/webapi-gin"),
@@ -52,11 +53,7 @@ func NewAnansibaobStack(scope constructs.Construct, id *string, props *awscdk.St
 			Retention:     awslogs.RetentionDays_ONE_DAY,
 		}),
 	})
-	webapi.Role().AddToPrincipalPolicy(awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-		Effect:    awsiam.Effect_ALLOW,
-		Actions:   &[]*string{jsii.String("dsql:DbConnect"), jsii.String("dsql:DbConnectAdmin")},
-		Resources: &[]*string{dsqlCluster.AttrResourceArn()},
-	}))
+	webapi.Role().AddToPrincipalPolicy(dsqlPolicyStatement)
 
 	weburi := webapi.AddFunctionUrl(&awslambda.FunctionUrlOptions{
 		InvokeMode: awslambda.InvokeMode_BUFFERED,
