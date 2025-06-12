@@ -3,66 +3,42 @@ package dao
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strings"
-	"time"
 
-	"github.com/aws/aws-sdk-go/aws/session"
-	v4 "github.com/aws/aws-sdk-go/aws/signer/v4"
-	"github.com/jackc/pgx/v5"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/dsql/auth"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func OpenPgxDb(ctx context.Context, endpoint string) (*pgx.Conn, error) {
+func CreatePgPool(ctx context.Context, clusterEndpoint string) (*pgxpool.Pool, error) {
 
-	parts := strings.Split(endpoint, ".")
+	parts := strings.Split(clusterEndpoint, ".")
 	if len(parts) < 4 {
-		return nil, fmt.Errorf("invalid endpoint format: %s", endpoint)
+		return nil, fmt.Errorf("invalid endpoint format: %s", clusterEndpoint)
 	}
 	region := parts[2]
 
-	token, err := GenerateDbConnectAdminAuthToken(endpoint, region, "DbConnectAdmin")
+	token, err := GenerateDbConnectAdminAuthToken(ctx, clusterEndpoint, region)
 	if err != nil {
 		return nil, err
 	}
 
-	dbUrl := fmt.Sprintf("postgres://%s:5432/postgres?user=admin&sslmode=require", endpoint)
-	dbConfig, err := pgx.ParseConfig(dbUrl)
+	dbUrl := fmt.Sprintf("postgres://%s:5432/postgres?user=admin&sslmode=require", clusterEndpoint)
+	dbConfig, err := pgxpool.ParseConfig(dbUrl)
 	if err != nil {
 		return nil, err
 	}
-	dbConfig.Password = token
+	dbConfig.ConnConfig.Password = token
 
-	conn, err := pgx.ConnectConfig(ctx, dbConfig)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close(ctx)
-
-	return conn, nil
+	return pgxpool.NewWithConfig(ctx, dbConfig)
 }
 
-func GenerateDbConnectAdminAuthToken(clusterEndpoint string, region string, action string) (string, error) {
+func GenerateDbConnectAdminAuthToken(ctx context.Context, clusterEndpoint, region string) (string, error) {
 
-	sess, err := session.NewSession()
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
-		return "", fmt.Errorf("session creation failed: %w", err)
+		return "", err
 	}
 
-	endpoint := "https://" + clusterEndpoint + "/"
-	req, err := http.NewRequest("GET", endpoint, nil)
-	if err != nil {
-		return "", fmt.Errorf("request creation failed: %w", err)
-	}
-
-	q := req.URL.Query()
-	q.Add("Action", action)
-	req.URL.RawQuery = q.Encode()
-
-	signer := v4.NewSigner(sess.Config.Credentials)
-	_, err = signer.Presign(req, nil, "dsql", region, 15*time.Minute, time.Now())
-	if err != nil {
-		return "", fmt.Errorf("signing failed: %w", err)
-	}
-
-	return strings.TrimPrefix(req.URL.String(), "https://"), nil
+	return auth.GenerateDBConnectAdminAuthToken(ctx, clusterEndpoint, region, cfg.Credentials)
 }
