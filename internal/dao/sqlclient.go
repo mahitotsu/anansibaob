@@ -23,13 +23,7 @@ func NewSqlClient(pool *pgxpool.Pool) SqlClient {
 
 func (c *sqlclient) Query(ctx context.Context, statement string) ([]map[string]any, error) {
 
-	conn, err := c.pool.Acquire(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Release()
-
-	rows, err := conn.Query(ctx, statement)
+	rows, err := c.pool.Query(ctx, statement)
 	if err != nil {
 		return nil, err
 	}
