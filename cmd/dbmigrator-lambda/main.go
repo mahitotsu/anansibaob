@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mahitotsu/anansibaob/internal/dao"
 )
@@ -30,22 +29,7 @@ func handler(ctx context.Context, event map[string]interface{}) (map[string]inte
 		return nil, initerr
 	}
 
-	conn, err := pool.Acquire(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Release()
-
-	rows, err := conn.Query(ctx, "SELECT 1")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	results, err := pgx.CollectRows(rows, pgx.RowToMap)
-	if err != nil {
-		return nil, err
-	}
+	results, err := dao.NewSqlClient(pool).Query(ctx, "SELECT 1")
 
 	return map[string]interface{}{"results": results}, err
 }

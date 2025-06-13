@@ -2,8 +2,10 @@ package dao
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/dsql/auth"
@@ -23,14 +25,26 @@ func CreatePgPool(ctx context.Context, clusterEndpoint string) (*pgxpool.Pool, e
 		return nil, err
 	}
 
-	dbUrl := fmt.Sprintf("postgres://%s:5432/postgres?user=admin&sslmode=require", clusterEndpoint)
-	dbConfig, err := pgxpool.ParseConfig(dbUrl)
+	poolConfig, err := pgxpool.ParseConfig("postgres://")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse pgxpool config: %w", err)
 	}
-	dbConfig.ConnConfig.Password = token
+	poolConfig.ConnConfig.Host = clusterEndpoint
+	poolConfig.ConnConfig.Port = 5432
+	poolConfig.ConnConfig.User = "admin"
+	poolConfig.ConnConfig.Password = token
+	poolConfig.ConnConfig.Database = "postgres"
+	poolConfig.ConnConfig.TLSConfig = &tls.Config{
+		ServerName:         clusterEndpoint,
+		InsecureSkipVerify: true,
+	}
 
-	return pgxpool.NewWithConfig(ctx, dbConfig)
+	poolConfig.MaxConnIdleTime = 5 * time.Minute
+	poolConfig.MaxConnLifetime = 30 * time.Minute
+	poolConfig.MaxConns = 1
+	poolConfig.MinConns = 0
+
+	return pgxpool.NewWithConfig(ctx, poolConfig)
 }
 
 func GenerateDbConnectAdminAuthToken(ctx context.Context, clusterEndpoint, region string) (string, error) {
