@@ -9,7 +9,7 @@ import (
 	"github.com/mahitotsu/anansibaob/internal/dao"
 )
 
-var sqlClient dao.SqlClient
+var dbInitializer dao.DBInitializer
 
 func init() {
 
@@ -18,18 +18,19 @@ func init() {
 		panic(fmt.Errorf("DB_CLUSTER_ENDPOINT environment variable not set"))
 	}
 
-	pool, err := dao.CreatePgPool(context.Background(), clusterEndpoint)
-	if err != nil {
+	if pool, err := dao.CreatePgPool(context.Background(), clusterEndpoint); err != nil {
 		panic(fmt.Errorf("failed to create database connection pool: %w", err))
+	} else {
+		dbInitializer = dao.NewDBInitializer(dao.NewSqlClient(pool))
 	}
-
-	sqlClient = dao.NewSqlClient(pool)
 }
 
 func handler(ctx context.Context, event map[string]interface{}) (map[string]interface{}, error) {
 
-	results, err := sqlClient.Query(ctx, "SELECT 1")
-	return map[string]interface{}{"results": results}, err
+	if err := dbInitializer.DropAndCreate(ctx); err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{"status": "success"}, nil
 }
 
 func main() {
